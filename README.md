@@ -7,4 +7,4 @@
 
   * ML flow logging of hyperparameter showcasing the validation loss
 
-  * Multimodal chatbot that processs image output
+  * Multimodal chatbot that uses the upload button and device camera to process image along with audio

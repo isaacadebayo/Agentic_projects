@@ -1,0 +1,62 @@
+name: CI - Agentic Projects
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-validate:
+    name: Lint & Validate Notebooks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install nbformat nbconvert nbqa flake8 dvc[gs]
+
+      - name: Validate notebook structure
+        run: |
+          python - <<EOF
+          import nbformat, glob, sys
+          errors = []
+          for path in glob.glob("**/*.ipynb", recursive=True):
+              try:
+                  with open(path) as f:
+                      nb = nbformat.read(f, as_version=4)
+                  nbformat.validate(nb)
+                  print(f"OK: {path}")
+              except Exception as e:
+                  errors.append(f"FAIL: {path} -> {e}")
+          if errors:
+              print("\n".join(errors))
+              sys.exit(1)
+          EOF
+
+      - name: Lint Python cells with nbqa + flake8
+        run: |
+          for nb in $(find . -name "*.ipynb" ! -path "./.git/*"); do
+            echo "Linting $nb"
+            nbqa flake8 "$nb" --max-line-length=120 --extend-ignore=E402,F401,E501 || true
+          done
+
+      - name: Check DVC config
+        run: |
+          if [ -f .dvc/config ]; then
+            echo "DVC config found"
+            cat .dvc/config
+          else
+            echo "No DVC config found - skipping"
+          fi
+
+      - name: Summary
+        run: echo "All notebooks validated successfully."
